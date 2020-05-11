@@ -11,15 +11,17 @@ const moment = require('moment')
 const Expense = require("../../model/expense.js")
 mongoose.connect("mongodb://localhost/expensesDB")
 
+/*
 router.get('/expenses/:d1?/:d2?', function (request, response) {
+    const d1 =request.query.d1
     Expense.find({}).sort(
         { date: -1 }).then(function (expenses) {
-            if (request.query.d1) {
+            if (d1) {
                 let upperDate;
                 if (!request.query.d2) {
                     upperDate = moment().format('LLLL');
                 } else {
-                    upperDate = d2;
+                    upperDate = request.query.d2;
                 }
                 for (let i in expenses) {
                     if (expenses[i]['date'] < d1) {
@@ -37,6 +39,7 @@ router.get('/expenses/:d1?/:d2?', function (request, response) {
             response.send(expenses)
         })
 })
+*/
 
 router.post('/new', function (request, response) {
     const item = request.body['name'];
@@ -61,14 +64,32 @@ router.put('/update/:group1/:group2', function (request, response) {
     })
 })
 
-router.get('/expenses/:group', function (request, response) {
+router.get('/expenses/:group/:total?', function (request, response) {
     const group = request.params['group']
-    console.log(group)
-    Expense.find({
-        group: group
-    }).then(function (expenses) {
-        response.send(expenses)
-    })
+    const total = request.query['total']
+    if (!(total === "true")) {
+        Expense.find({
+            group: group
+        }).then(function (expenses) {
+            response.send(expenses)
+        })
+    } else {
+        Expense.aggregate([{
+            $match: {
+                group: group
+            }
+        }, {
+            $group: {
+                _id: group,
+                total: {
+                    $sum: "$amount"
+                }
+            }
+        }
+        ]).then(function (expenses) {
+            response.send(expenses)
+        })
+    }
 })
 
 module.exports = router
